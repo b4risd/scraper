@@ -1,1 +1,32 @@
+name: Scrape Altın Fiyatları
 
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # her 10 dakikada bir
+  workflow_dispatch:          # elle de çalıştırabilirsin
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repo indir
+        uses: actions/checkout@v3
+
+      - name: Python kur
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Paketleri yükle
+        run: pip install requests beautifulsoup4
+
+      - name: Scraper çalıştır
+        run: python scraper.py
+
+      - name: JSON commit et
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+          git add data.json
+          git commit -m "Update data.json" || echo "No changes"
+          git push

@@ -21,25 +21,30 @@ try:
 
     soup = BeautifulSoup(r.text, "html.parser")
 
-    # Fiyatların bulunduğu ana kutuyu seçiyoruz
-    altin_kurlari_div = soup.find("div", class_="gold-page-data")
-    
-    # Her bir altın kurunun bulunduğu satırları seçiyoruz
-    rows = altin_kurlari_div.find_all("div", class_="t-row")
-    
-    print(f"Toplam {len(rows)} adet altın kuru bulundu.")
+    # === DÜZELTİLEN SATIR BURASI ===
+    # Eski Hatalı Kod: altin_kurlari_div = soup.find("div", class_="gold-page-data")
+    # Yeni Doğru Kod:
+    altin_kurlari_div = soup.find("div", id="marketData")
+    # =================================
 
-    for row in rows:
-        # Satır içindeki hücreleri al
-        isim = row.find("a", class_="name").get_text(strip=True)
-        alis = row.find("div", class_="cell-buying").get_text(strip=True)
-        satis = row.find("div", class_="cell-selling").get_text(strip=True)
-        
-        veriler[isim] = {
-            "Alış": alis,
-            "Satış": satis
-        }
-        print(f"Bulundu: {isim} - Alış: {alis}, Satış: {satis}")
+    if altin_kurlari_div:
+        # Her bir altın kurunun bulunduğu satırları seçiyoruz
+        rows = altin_kurlari_div.find_all("div", class_="t-row")
+        print(f"Toplam {len(rows)} adet altın kuru bulundu.")
+
+        for row in rows:
+            isim = row.find("a", class_="name").get_text(strip=True)
+            alis = row.find("div", class_="cell-buying").get_text(strip=True)
+            satis = row.find("div", class_="cell-selling").get_text(strip=True)
+            
+            veriler[isim] = {
+                "Alış": alis,
+                "Satış": satis
+            }
+            print(f"Bulundu: {isim} - Alış: {alis}, Satış: {satis}")
+    else:
+        print("HATA: Fiyatların olduğu ana kutu ('marketData' id'li div) bulunamadı.")
+
 
 except Exception as e:
     print(f"Bir hata oluştu: {e}")

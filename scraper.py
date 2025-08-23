@@ -2,13 +2,18 @@ import requests
 import json
 from datetime import datetime
 
-# Bu, sitenin fiyatları getirmek için arka planda kullandığı API adresidir.
 API_URL = "https://www.izko.org.tr/kurlar.php"
 
-# Siteye normal bir tarayıcı gibi görünmek için Headers bilgisi
+# Sitenin bot olmadığınıza ikna olması için gönderilebilecek en kapsamlı başlık bilgisi
 headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-    'Referer': 'https://www.izko.org.tr/' # Nereden geldiğimizi belirtmek güvenilirliği artırır
+    'Accept': 'application/json, text/javascript, */*; q=0.01',
+    'Accept-Language': 'en-US,en;q=0.9,tr;q=0.8',
+    'Referer': 'https://www.izko.org.tr/',
+    'Sec-Fetch-Dest': 'empty',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Site': 'same-origin',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36',
+    'X-Requested-With': 'XMLHttpRequest'
 }
 
 veriler = {}
@@ -16,49 +21,40 @@ timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 try:
     print(f"API adresine istek yapılıyor: {API_URL}")
-    r = requests.get(API_URL, headers=headers, timeout=10)
-    r.raise_for_status()  # Eğer adrese ulaşamazsak hata ver
+    # Timeout süresini biraz artıralım
+    r = requests.get(API_URL, headers=headers, timeout=20)
+    
+    # === HATA AYIKLAMA İÇİN EKLENEN KISIM ===
+    print(f"Sunucudan gelen durum kodu: {r.status_code}")
+    # Sunucudan gelen cevabın ilk 500 karakterini yazdırarak ne döndüğünü görelim
+    print(f"Sunucu cevabının başlangıcı: {r.text[:500]}")
+    # ==========================================
 
-    # Gelen cevap doğrudan JSON formatında olduğu için parse ediyoruz
-    api_data = r.json()
-    print("API'den veri başarıyla alındı.")
+    r.raise_for_status()
 
-    # API'den gelen verileri istediğimiz formata çeviriyoruz
-    # Senin bulduğun ID'ler burada anahtar olarak kullanılıyor (örn: yeniceyrekalis)
-    veriler = {
-        "24 Ayar Altın Gram": {
-            "Alış": api_data.get('hasgramalis', 'N/A'),
-            "Satış": api_data.get('hasgramsatis', 'N/A')
-        },
-        "Yeni Çeyrek Altın": {
-            "Alış": api_data.get('yeniceyrekalis', 'N/A'),
-            "Satış": api_data.get('yeniceyreksatis', 'N/A')
-        },
-        "Eski Çeyrek Altın": {
-            "Alış": api_data.get('eskiceyrekalis', 'N/A'),
-            "Satış": api_data.get('eskiceyreksatis', 'N/A')
-        },
-        "Yeni Yarım Altın": {
-            "Alış": api_data.get('yeniyarimalis', 'N/A'),
-            "Satış": api_data.get('yeniyarimsatis', 'N/A')
-        },
-        "Eski Yarım Altın": {
-            "Alış": api_data.get('eskiyarimalis', 'N/A'),
-            "Satış": api_data.get('eskiyarimsatis', 'N/A')
-        },
-        "Yeni Tam Altın": {
-            "Alış": api_data.get('yenitamalis', 'N/A'),
-            "Satış": api_data.get('yenitamsatis', 'N/A')
-        },
-        "Eski Tam Altın": {
-            "Alış": api_data.get('eskitamalis', 'N/A'),
-            "Satış": api_data.get('eskitamsatis', 'N/A')
+    # Sunucudan gelen cevabın JSON olup olmadığını kontrol edelim
+    if 'application/json' in r.headers.get('Content-Type', ''):
+        api_data = r.json()
+        print("API'den JSON verisi başarıyla alındı ve çözüldü.")
+
+        veriler = {
+            "24 Ayar Altın Gram": {"Alış": api_data.get('hasgramalis'), "Satış": api_data.get('hasgramsatis')},
+            "Yeni Çeyrek Altın": {"Alış": api_data.get('yeniceyrekalis'), "Satış": api_data.get('yeniceyreksatis')},
+            "Eski Çeyrek Altın": {"Alış": api_data.get('eskiceyrekalis'), "Satış": api_data.get('eskiceyreksatis')},
+            "Yeni Yarım Altın": {"Alış": api_data.get('yeniyarimalis'), "Satış": api_data.get('yeniyarimsatis')},
+            "Eski Yarım Altın": {"Alış": api_data.get('eskiyarimalis'), "Satış": api_data.get('eskiyarimsatis')},
+            "Yeni Tam Altın": {"Alış": api_data.get('yenitamalis'), "Satış": api_data.get('yenitamsatis')},
+            "Eski Tam Altın": {"Alış": api_data.get('eskitamalis'), "Satış": api_data.get('eskitamsatis')}
         }
-    }
-    print("Veriler başarıyla formatlandı.")
+        print("Veriler başarıyla formatlandı.")
+    else:
+        print("HATA: Sunucudan gelen cevap JSON formatında değil. Site muhtemelen isteği engelledi.")
 
 except requests.exceptions.RequestException as e:
-    print(f"HATA: API'ye bağlanılamadı. Hata: {e}")
+    print(f"HATA: API'ye bağlanırken bir sorun oluştu. Hata: {e}")
+except json.JSONDecodeError:
+    print("HATA: Sunucudan gelen cevap JSON olarak çözülemedi. Muhtemelen bir engelleme sayfası geldi.")
+
 
 # Sonuçları JSON dosyasına yaz
 data = {
@@ -72,4 +68,4 @@ with open("data.json", "w", encoding="utf-8") as f:
 if veriler:
     print("data.json dosyası API verileriyle başarıyla güncellendi.")
 else:
-    print("data.json dosyası güncellendi ancak içine yazılacak API verisi bulunamadı.")
+    print("SONUÇ: data.json dosyası güncellendi ancak içine yazılacak fiyat bulunamadı.")

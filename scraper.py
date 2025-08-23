@@ -2,43 +2,46 @@ import requests
 import json
 from datetime import datetime
 
-# Senin bulduğun, halka açık ve stabil API adresi
+# Kullandığımız halka açık ve stabil API adresi
 API_URL = "https://finance.truncgil.com/api/gold-rates"
 
 headers = {
-    # DOKÜMANTASYONDA BELİRTİLEN VE YENİ EKLENEN SATIR
     'Accept': 'application/json',
-    # Göndermeye devam etmemizde sakınca olmayan User-Agent bilgisi
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
 }
 
 veriler = {}
-timestamp = "" # API zaten kendi zaman damgasını veriyor, onu kullanacağız.
+timestamp = ""
 
 try:
     print(f"API adresine bağlanılıyor: {API_URL}")
     r = requests.get(API_URL, headers=headers, timeout=20)
-    r.raise_for_status() # Bağlantı hatası olursa durdur
+    r.raise_for_status()
     print("API'den veri başarıyla alındı.")
 
-    # Gelen cevabı JSON formatında çöz
     api_data = r.json()
     
-    # API'nin kendi "Son Güncelleme" zamanını alalım
-    timestamp = api_data.get("update_date_str", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    # API'nin kendi güncelleme zamanını alıyoruz
+    timestamp = api_data.get("Meta_Data", {}).get("Update_Date", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     
-    # API'den gelen listedeki her bir altın için döngü
-    for item in api_data.get("data", []):
-        isim = item.get("name")
-        alis_str = item.get("buying_str")
-        satis_str = item.get("selling_str")
+    # === DOĞRU YAPIYA GÖRE DEĞİŞTİRİLEN KISIM ===
+    # "Rates" anahtarının içindeki objeyi alıyoruz
+    rates_object = api_data.get("Rates", {})
+    
+    # Bu objenin içindeki her bir altın kuru için döngü (GRA, CEY, YAR...)
+    for key, item in rates_object.items():
+        isim = item.get("Name")
+        alis = item.get("Buying")
+        satis = item.get("Selling")
         
-        if isim and alis_str and satis_str:
-            veriler[isim] = {
-                "Alış": alis_str,
-                "Satış": satis_str
+        # Sadece isim ve fiyatları olanları alalım
+        if isim and alis is not None and satis is not None:
+            veriler[isim.title()] = { # .title() ile baş harfleri büyütelim (örn: GRAMALTIN -> Gramaltin)
+                "Alış": str(alis),
+                "Satış": str(satis)
             }
-            print(f"Bulundu: {isim} - Alış: {alis_str}, Satış: {satis_str}")
+            print(f"Bulundu: {isim.title()} - Alış: {alis}, Satış: {satis}")
+    # ============================================
 
 except Exception as e:
     print(f"Bir hata oluştu: {e}")

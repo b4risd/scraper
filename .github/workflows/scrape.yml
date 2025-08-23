@@ -2,12 +2,17 @@ name: Scrape Altın Fiyatları
 
 on:
   schedule:
-    - cron: "*/10 * * * *"   # her 10 dakikada bir
-  workflow_dispatch:          # elle de çalıştırabilirsin
+    - cron: "*/10 * * * *"   # her 10 dakikada bir çalışır
+  workflow_dispatch:          # elle de çalıştırabilmeni sağlar
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
+    
+    # İzin hatasını (exit code 128) çözen önemli kısım
+    permissions:
+      contents: write
+
     steps:
       - name: Repo indir
         uses: actions/checkout@v3
@@ -17,23 +22,16 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Paketleri yükle
+      - name: Gerekli paketleri yükle
         run: pip install requests beautifulsoup4
 
       - name: Scraper çalıştır
         run: python scraper.py
 
-      - name: JSON commit et
       - name: JSON dosyasını kaydet ve gönder
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions-bot@users.noreply.github.com"
           git add data.json
           git commit -m "Fiyatlar güncellendi" || echo "Değişiklik yok"
-          git push
-        run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "actions@github.com"
-          git add data.json
-          git commit -m "Update data.json" || echo "No changes"
           git push

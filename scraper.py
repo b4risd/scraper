@@ -1,50 +1,44 @@
 import requests
-from bs4 import BeautifulSoup
 import json
 from datetime import datetime
 
-# YENİ VE GÜVENİLİR KAYNAK
-URL = "https://bigpara.hurriyet.com.tr/altin/"
+# Senin bulduğun, halka açık ve stabil API adresi
+API_URL = "https://finance.truncgil.com/api/gold-rates"
 
 headers = {
+    # DOKÜMANTASYONDA BELİRTİLEN VE YENİ EKLENEN SATIR
+    'Accept': 'application/json',
+    # Göndermeye devam etmemizde sakınca olmayan User-Agent bilgisi
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
 }
 
 veriler = {}
-timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+timestamp = "" # API zaten kendi zaman damgasını veriyor, onu kullanacağız.
 
 try:
-    print(f"Veri çekilecek adres: {URL}")
-    r = requests.get(URL, headers=headers, timeout=20)
-    r.raise_for_status()
-    print(f"Sunucudan gelen durum kodu: {r.status_code}")
+    print(f"API adresine bağlanılıyor: {API_URL}")
+    r = requests.get(API_URL, headers=headers, timeout=20)
+    r.raise_for_status() # Bağlantı hatası olursa durdur
+    print("API'den veri başarıyla alındı.")
 
-    soup = BeautifulSoup(r.text, "html.parser")
-
-    # === DÜZELTİLEN SATIR BURASI ===
-    # Eski Hatalı Kod: altin_kurlari_div = soup.find("div", class_="gold-page-data")
-    # Yeni Doğru Kod:
-    altin_kurlari_div = soup.find("div", id="marketData")
-    # =================================
-
-    if altin_kurlari_div:
-        # Her bir altın kurunun bulunduğu satırları seçiyoruz
-        rows = altin_kurlari_div.find_all("div", class_="t-row")
-        print(f"Toplam {len(rows)} adet altın kuru bulundu.")
-
-        for row in rows:
-            isim = row.find("a", class_="name").get_text(strip=True)
-            alis = row.find("div", class_="cell-buying").get_text(strip=True)
-            satis = row.find("div", class_="cell-selling").get_text(strip=True)
-            
+    # Gelen cevabı JSON formatında çöz
+    api_data = r.json()
+    
+    # API'nin kendi "Son Güncelleme" zamanını alalım
+    timestamp = api_data.get("update_date_str", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    
+    # API'den gelen listedeki her bir altın için döngü
+    for item in api_data.get("data", []):
+        isim = item.get("name")
+        alis_str = item.get("buying_str")
+        satis_str = item.get("selling_str")
+        
+        if isim and alis_str and satis_str:
             veriler[isim] = {
-                "Alış": alis,
-                "Satış": satis
+                "Alış": alis_str,
+                "Satış": satis_str
             }
-            print(f"Bulundu: {isim} - Alış: {alis}, Satış: {satis}")
-    else:
-        print("HATA: Fiyatların olduğu ana kutu ('marketData' id'li div) bulunamadı.")
-
+            print(f"Bulundu: {isim} - Alış: {alis_str}, Satış: {satis_str}")
 
 except Exception as e:
     print(f"Bir hata oluştu: {e}")
@@ -59,6 +53,6 @@ with open("data.json", "w", encoding="utf-8") as f:
     json.dump(data, f, ensure_ascii=False, indent=2)
 
 if veriler:
-    print("data.json dosyası başarıyla güncellendi.")
+    print("data.json dosyası API verileriyle başarıyla güncellendi.")
 else:
-    print("SONUÇ: data.json dosyası güncellendi ancak içine yazılacak fiyat bulunamadı.")
+    print("SONUÇ: data.json dosyası güncellendi ancak API'den veri alınamadı.")
